@@ -18,6 +18,7 @@ def save_checkpoint(
     global_step: int,
     epoch: int,
     keep_last: int = 3,
+    ema=None,
 ) -> Path:
     """Writes one `step-XXXXXX.pt` bundle and prunes all but the newest `keep_last`."""
     out_dir = Path(out_dir)
@@ -32,6 +33,7 @@ def save_checkpoint(
             "scaler": scaler.state_dict() if scaler is not None else None,
             "global_step": global_step,
             "epoch": epoch,
+            "ema": ema.state_dict() if ema is not None else None,
             # RNG states make a resumed run bit-identical to an uninterrupted one.
             "rng_python": torch.random.get_rng_state(),
             "rng_cuda": torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None,
@@ -70,11 +72,25 @@ def load_checkpoint(
     scheduler=None,
     scaler=None,
     map_location: str = "cpu",
+    ema=None,
 ) -> tuple[int, int]:
     """Restores a checkpoint in place and returns `(global_step, epoch)` to continue from."""
     ckpt = torch.load(path, map_location=map_location, weights_only=False)
 
-    controlnet.load_state_dict(ckpt["controlnet"])
+    if optimizer is None and "ema" in ckpt and ckpt["ema"] is not None:
+        print("[info] Found EMA weights in checkpoint. Loading EMA weights for inference...")
+        controlnet.load_state_dict(ckpt["controlnet"])
+        ema_state = ckpt["ema"]
+        shadow_params = ema_state["shadow_params"]
+        with torch.no_grad():
+            for name, p in controlnet.named_parameters():
+                if name in shadow_params:
+                    p.copy_(shadow_params[name].to(p.device))
+    else:
+        controlnet.load_state_dict(ckpt["controlnet"])
+        if ema is not None and "ema" in ckpt and ckpt["ema"] is not None:
+            ema.load_state_dict(ckpt["ema"])
+
     if optimizer is not None and ckpt.get("optimizer"):
         optimizer.load_state_dict(ckpt["optimizer"])
     if scheduler is not None and ckpt.get("lr_scheduler"):
@@ -89,7 +105,7 @@ def load_checkpoint(
             states = [s.cpu().to(torch.uint8) for s in ckpt["rng_cuda"]]
             torch.cuda.set_rng_state_all(states)
         except (RuntimeError, ValueError, TypeError):
-            pass  # GPU count changed between runs; harmless, just loses exact reproducibility.
+            pass  # harmless, just loses exact reproducibility.
     if ckpt.get("rng_numpy") is not None:
         np.random.set_state(ckpt["rng_numpy"])
 

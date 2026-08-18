@@ -28,6 +28,7 @@ train:
   learning_rate: 1.0e-5
   optimizer: "adamw"                  # "adamw" | "adafactor" | "adamw8bit" (see README: 8GB GPUs)
   weight_decay: 0.0
+  ema_decay: 0.999                    # decay factor for Exponential Moving Average (EMA) weights
   adam_betas: [0.9, 0.999]
   adam_eps: 1.0e-8
   max_grad_norm: 1.0

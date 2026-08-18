@@ -13,6 +13,7 @@ import math
 import random
 import time
 from pathlib import Path
+from contextlib import nullcontext
 
 import numpy as np
 import torch
@@ -84,24 +85,26 @@ def build_lr_lambda(warmup_steps: int):
 
 
 @torch.no_grad()
-def run_validation(cfg, components, controlled, val_loader, out_dir: Path, step: int) -> None:
+def run_validation(cfg, components, controlled, val_loader, out_dir: Path, step: int, ema=None) -> None:
     """Generates a fixed preview grid (hint | generated) so you can eyeball control fidelity."""
     controlled.controlnet.eval()
     batch = next(iter(val_loader))
     device = next(controlled.controlnet.parameters()).device
 
-    images = generate(
-        components, controlled,
-        hints=batch["hint"],
-        prompts=[c if c else "a photo" for c in batch["caption"]],
-        negative_prompt=cfg.sample.negative_prompt,
-        steps=cfg.logging.val_steps,
-        guidance_scale=cfg.logging.val_guidance,
-        control_scale=cfg.model.control_scale,
-        resolution=cfg.data.resolution,
-        device=device,
-        dtype=torch.float32,   # ControlNet holds fp32 master weights during training
-    )
+    context = ema.average_parameters(controlled.controlnet) if ema is not None else nullcontext()
+    with context:
+        images = generate(
+            components, controlled,
+            hints=batch["hint"],
+            prompts=[c if c else "a photo" for c in batch["caption"]],
+            negative_prompt=cfg.sample.negative_prompt,
+            steps=cfg.logging.val_steps,
+            guidance_scale=cfg.logging.val_guidance,
+            control_scale=cfg.model.control_scale,
+            resolution=cfg.data.resolution,
+            device=device,
+            dtype=torch.float32,   # ControlNet holds fp32 master weights during training
+        )
 
     from utils.image import latent_to_pil  # local import keeps the module graph shallow
     hint_pils = latent_to_pil(batch["hint"] * 2 - 1)
@@ -150,6 +153,11 @@ def main() -> None:
         controlnet.enable_gradient_checkpointing()
     controlled = ControlledUNet(components.unet, controlnet)
 
+    # Initialize EMA weights tracker
+    from utils.ema import EMAModel
+    ema_decay = cfg.train.get("ema_decay", 0.999)
+    ema = EMAModel(controlnet, decay=ema_decay)
+
     print(f"[info] ControlNet trainable params: {controlnet.num_trainable_params/1e6:.1f}M")
     assert_shapes_match(components.unet, controlnet, cfg.data.resolution, device=device)
 
@@ -194,7 +202,7 @@ def main() -> None:
     resume_path = latest_checkpoint(out_dir) if args.resume == "auto" else args.resume
     if resume_path:
         global_step, start_epoch = load_checkpoint(
-            resume_path, controlnet, optimizer, lr_scheduler, scaler, map_location=device
+            resume_path, controlnet, optimizer, lr_scheduler, scaler, map_location=device, ema=ema
         )
         print(f"[resume] {resume_path} @ step {global_step}, epoch {start_epoch}")
 
@@ -254,6 +262,10 @@ def main() -> None:
             scaler.update()
             optimizer.zero_grad(set_to_none=True)
             lr_scheduler.step()
+
+            # Update EMA shadow weights
+            ema.step(controlnet)
+
             global_step += 1
             progress.update(1)
 
@@ -269,19 +281,19 @@ def main() -> None:
             if global_step % cfg.logging.ckpt_every == 0:
                 path = save_checkpoint(
                     out_dir, controlnet, optimizer, lr_scheduler, scaler,
-                    global_step, epoch, keep_last=cfg.logging.keep_last,
+                    global_step, epoch, keep_last=cfg.logging.keep_last, ema=ema
                 )
                 progress.write(f"[ckpt] {path}")
 
             if global_step % cfg.logging.val_every == 0:
-                run_validation(cfg, components, controlled, val_loader, out_dir, global_step)
+                run_validation(cfg, components, controlled, val_loader, out_dir, global_step, ema=ema)
 
             if global_step >= max_steps:
                 break
         epoch += 1
 
     save_checkpoint(out_dir, controlnet, optimizer, lr_scheduler, scaler,
-                    global_step, epoch, keep_last=cfg.logging.keep_last)
+                    global_step, epoch, keep_last=cfg.logging.keep_last, ema=ema)
     progress.close()
     print(f"[done] finished at step {global_step}")
 
