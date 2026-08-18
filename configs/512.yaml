@@ -1,0 +1,15 @@
+# Inherits everything from base.yaml and only changes what differs at 512px.
+# Proof that resolution is a config value: no model code changes are required.
+_base_: "base.yaml"
+
+data:
+  processed_dir: "datasets/coco512"
+  resolution: 512
+
+train:
+  batch_size: 4               # 512px uses ~4x the activation memory of 256px
+  grad_accum: 4               # keep the effective batch at 16
+  gradient_checkpointing: true
+
+logging:
+  output_dir: "checkpoints/run512"

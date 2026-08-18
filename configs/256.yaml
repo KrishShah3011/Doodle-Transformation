@@ -1,0 +1,9 @@
+# Inherits everything from base.yaml and only changes/sets what differs at 256px.
+_base_: "base.yaml"
+
+data:
+  processed_dir: "datasets/coco256"
+  resolution: 256
+
+logging:
+  output_dir: "checkpoints/run256"

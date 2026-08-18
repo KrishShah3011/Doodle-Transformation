@@ -1,0 +1,25 @@
+# --- core deep learning ---------------------------------------------------
+# Install torch FIRST, matched to your CUDA version, e.g.:
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+torch>=2.1.0
+torchvision>=0.16.0
+
+# --- Stable Diffusion building blocks -------------------------------------
+diffusers>=0.27.0          # UNet2DConditionModel, AutoencoderKL, schedulers
+transformers>=4.38.0       # CLIP text encoder + tokenizer (and CLIP scoring)
+safetensors>=0.4.0         # fast, safe checkpoint serialisation
+accelerate>=0.27.0         # only used for its fast `device_map`/dtype helpers
+
+# --- data pipeline --------------------------------------------------------
+opencv-python>=4.8.0       # Canny edge detection
+pillow>=10.0.0             # image IO
+numpy>=1.24.0
+requests>=2.31.0           # COCO download
+tqdm>=4.66.0
+
+# --- config / misc --------------------------------------------------------
+pyyaml>=6.0
+
+# --- optional -------------------------------------------------------------
+# xformers                 # memory-efficient attention (torch>=2.0 has SDPA built in, so optional)
+# tensorboard              # if you want loss curves instead of stdout logs

@@ -1,0 +1,54 @@
+# =============================================================================
+# Base configuration. Every value here can be overridden on the command line:
+#   python train.py --config configs/base.yaml train.batch_size=8 data.resolution=512
+# =============================================================================
+
+model:
+  # HuggingFace repo that supplies the FROZEN VAE / UNet / CLIP text encoder.
+  pretrained: "stable-diffusion-v1-5/stable-diffusion-v1-5"
+  # Which UNet skip connections receive ControlNet residuals is derived automatically.
+  control_scale: 1.0        # inference-time strength multiplier on ControlNet outputs
+
+data:
+  processed_dir: "datasets/coco256"   # produced by data/prepare_coco.py
+  resolution: 256                     # MUST match what prepare_coco.py produced
+  max_samples: -1                     # -1 = use the whole manifest
+  val_samples: 8                      # images held out for the validation grid
+  # Canny thresholds are randomised per-sample inside these ranges so the model
+  # generalises from clean Canny edges to messy hand-drawn doodles.
+  canny_low_range: [50, 100]
+  canny_high_range: [150, 250]
+  caption_dropout: 0.5                # p(replace caption with "") -> forces edge-map reliance
+  num_workers: 8
+  hflip: true
+
+train:
+  batch_size: 16
+  grad_accum: 1                       # effective batch = batch_size * grad_accum
+  learning_rate: 1.0e-5
+  optimizer: "adamw"                  # "adamw" | "adafactor" | "adamw8bit" (see README: 8GB GPUs)
+  weight_decay: 0.0
+  adam_betas: [0.9, 0.999]
+  adam_eps: 1.0e-8
+  max_grad_norm: 1.0
+  lr_warmup_steps: 500
+  max_steps: 60000                    # -1 = run until max_epochs
+  max_epochs: -1
+  mixed_precision: "fp16"             # "fp16" | "bf16" | "no"
+  gradient_checkpointing: false       # true -> ~40% less VRAM, ~25% slower
+  unet_fp32: false                    # set true if fp16 training ever produces NaN losses
+  seed: 42
+
+logging:
+  output_dir: "checkpoints/run1"
+  log_every: 50                       # steps between stdout loss lines
+  ckpt_every: 2000                    # steps between checkpoints (NOT epochs -- see README)
+  keep_last: 3                        # older checkpoints are deleted
+  val_every: 2000                     # steps between validation image grids
+  val_steps: 20                       # denoising steps used for validation previews
+  val_guidance: 7.5
+
+sample:
+  steps: 30
+  guidance_scale: 9.0
+  negative_prompt: "lowres, bad anatomy, worst quality, blurry, jpeg artifacts"

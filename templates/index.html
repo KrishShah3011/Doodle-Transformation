@@ -1,0 +1,1142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ControlNet Doodle Studio</title>
+  <!-- Modern Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+  
+  <style>
+    /* Styling variables and CSS Reset */
+    :root {
+      --bg-color: #080b11;
+      --card-bg: rgba(22, 28, 45, 0.4);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent-primary: #6366f1;
+      --accent-secondary: #a855f7;
+      --accent-gradient: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
+      --accent-glow: 0 0 20px rgba(99, 102, 241, 0.4);
+      --accent-glow-green: 0 0 20px rgba(16, 185, 129, 0.4);
+      --glow-active: 0 0 25px rgba(168, 85, 247, 0.35);
+      --font-heading: 'Outfit', sans-serif;
+      --font-body: 'Inter', sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      font-family: var(--font-body);
+      min-height: 100vh;
+      overflow-x: hidden;
+      background-image: 
+        radial-gradient(at 10% 20%, rgba(99, 102, 241, 0.1) 0px, transparent 50%),
+        radial-gradient(at 90% 80%, rgba(168, 85, 247, 0.1) 0px, transparent 50%);
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      padding: 2rem 4rem 1rem 4rem;
+      border-bottom: 1px solid var(--card-border);
+      backdrop-filter: blur(8px);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .brand {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .brand h1 {
+      font-family: var(--font-heading);
+      font-size: 2.2rem;
+      font-weight: 800;
+      background: var(--accent-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: -0.5px;
+    }
+
+    .brand p {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .app-container {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 2rem;
+      padding: 2rem 4rem;
+      flex-grow: 1;
+      max-width: 1800px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    /* Glassmorphism card styles */
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      padding: 1.5rem;
+      transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    /* Left Sidebar: Controls */
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+      align-self: start;
+    }
+
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    label {
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    select, textarea, input[type="text"], input[type="number"] {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      color: var(--text-main);
+      padding: 0.75rem;
+      font-family: var(--font-body);
+      font-size: 0.95rem;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      width: 100%;
+    }
+
+    select:focus, textarea:focus, input:focus {
+      outline: none;
+      border-color: var(--accent-primary);
+      box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    /* Accordion / Collapsible section */
+    .accordion-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      padding: 0.5rem 0;
+      user-select: none;
+    }
+
+    .accordion-header h3 {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 600;
+    }
+
+    .accordion-icon {
+      font-size: 0.8rem;
+      transition: transform 0.3s;
+    }
+
+    .accordion-content {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease-out;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .accordion-content.expanded {
+      max-height: 500px;
+      padding-top: 1rem;
+    }
+
+    /* Sliders styling */
+    .slider-container {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .slider-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.85rem;
+    }
+
+    .slider-value {
+      font-weight: 600;
+      color: var(--accent-primary);
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: rgba(255, 255, 255, 0.1);
+      outline: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--accent-primary);
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+    }
+
+    input[type="range"]::-webkit-slider-thumb:hover {
+      background: var(--accent-secondary);
+      transform: scale(1.2);
+    }
+
+    .seed-input-container {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .btn-icon {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      color: var(--text-main);
+      cursor: pointer;
+      width: 42px;
+      height: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s, border-color 0.2s;
+    }
+
+    .btn-icon:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.25);
+    }
+
+    /* Glowing Action Button */
+    .btn-generate {
+      background: var(--accent-gradient);
+      border: none;
+      border-radius: 12px;
+      color: var(--text-main);
+      cursor: pointer;
+      font-family: var(--font-heading);
+      font-size: 1.1rem;
+      font-weight: 700;
+      padding: 1rem;
+      text-align: center;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      transition: all 0.3s;
+      box-shadow: var(--accent-glow);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn-generate::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(
+        120deg,
+        transparent,
+        rgba(255, 255, 255, 0.25),
+        transparent
+      );
+      transition: all 0.6s;
+    }
+
+    .btn-generate:hover::before {
+      left: 100%;
+    }
+
+    .btn-generate:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 0 30px rgba(168, 85, 247, 0.6);
+    }
+
+    .btn-generate:disabled {
+      background: rgba(255, 255, 255, 0.08);
+      color: rgba(255, 255, 255, 0.3);
+      cursor: not-allowed;
+      box-shadow: none;
+      transform: none;
+    }
+
+    /* Right Panel: Pipeline Dashboard */
+    .pipeline {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
+      height: 100%;
+    }
+
+    .pipeline-stage {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      height: 100%;
+    }
+
+    .stage-title {
+      font-family: var(--font-heading);
+      font-size: 1.1rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .stage-number {
+      background: rgba(255, 255, 255, 0.1);
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--text-muted);
+    }
+
+    .pipeline-stage.active .stage-number {
+      background: var(--accent-primary);
+      color: var(--text-main);
+    }
+
+    .pipeline-stage.completed .stage-number {
+      background: #10b981;
+      color: var(--text-main);
+    }
+
+    .viewer-card {
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 400px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .pipeline-stage.active .viewer-card {
+      border-color: var(--accent-primary);
+      box-shadow: var(--glow-active);
+    }
+
+    .pipeline-stage.completed .viewer-card {
+      border-color: #10b981;
+    }
+
+    /* Frame Images and Placeholders */
+    .frame-img {
+      max-width: 100%;
+      max-height: 384px;
+      object-fit: contain;
+      border-radius: 8px;
+      display: none;
+      image-rendering: pixelated; /* Sharp pixel edges for intermediate steps */
+    }
+
+    .frame-img.loaded {
+      display: block;
+    }
+
+    .placeholder-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+      color: var(--text-muted);
+      text-align: center;
+      padding: 2rem;
+    }
+
+    .placeholder-icon {
+      font-size: 3rem;
+      opacity: 0.5;
+    }
+
+    /* Step 1: Canvas vs File Upload Tabs */
+    .tabs-container {
+      display: flex;
+      width: 100%;
+      border-bottom: 1px solid var(--card-border);
+      margin-bottom: 1rem;
+    }
+
+    .tab {
+      flex-grow: 1;
+      padding: 0.5rem;
+      text-align: center;
+      cursor: pointer;
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 0.85rem;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+    }
+
+    .tab.active {
+      color: var(--text-main);
+      border-color: var(--accent-primary);
+    }
+
+    .tab-content {
+      display: none;
+      width: 100%;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+    }
+
+    .tab-content.active {
+      display: flex;
+    }
+
+    /* Drawing Canvas controls */
+    #drawCanvas {
+      background: #ffffff;
+      border-radius: 8px;
+      cursor: crosshair;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+      border: 2px solid var(--card-border);
+    }
+
+    .canvas-controls {
+      display: flex;
+      width: 100%;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .canvas-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      color: var(--text-main);
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.85rem;
+      padding: 0.5rem 1rem;
+      transition: background 0.2s;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    /* Drag & Drop Upload Zone */
+    .upload-zone {
+      width: 100%;
+      height: 256px;
+      border: 2px dashed rgba(255, 255, 255, 0.2);
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: border-color 0.3s, background 0.3s;
+      padding: 1rem;
+      text-align: center;
+    }
+
+    .upload-zone:hover, .upload-zone.dragover {
+      border-color: var(--accent-primary);
+      background: rgba(99, 102, 241, 0.05);
+    }
+
+    #fileInput {
+      display: none;
+    }
+
+    /* Denoising Sandbox Details */
+    .progress-bar-container {
+      width: calc(100% - 2rem);
+      height: 6px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 3px;
+      position: absolute;
+      bottom: 2.5rem;
+      left: 1rem;
+      display: none;
+      overflow: hidden;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: var(--accent-gradient);
+      width: 0%;
+      transition: width 0.1s linear;
+      box-shadow: 0 0 10px rgba(168, 85, 247, 0.5);
+    }
+
+    .progress-text {
+      position: absolute;
+      bottom: 1rem;
+      left: 1rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      display: none;
+    }
+
+    /* Spinning overlay for initial loading step */
+    .loader-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(8, 11, 17, 0.85);
+      z-index: 5;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1.5rem;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+
+    .loader-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .spinner {
+      width: 48px;
+      height: 48px;
+      border: 4px solid rgba(255, 255, 255, 0.1);
+      border-top-color: var(--accent-primary);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    .loader-text {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text-main);
+      text-align: center;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Masterpiece controls */
+    .masterpiece-controls {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      display: none;
+    }
+
+    .masterpiece-controls.active {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    /* Custom Notification Alert */
+    .notification {
+      background: rgba(220, 38, 38, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 12px;
+      color: var(--text-main);
+      padding: 1rem 1.5rem;
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      z-index: 100;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+      max-width: 450px;
+      display: none;
+      animation: slideUp 0.3s ease;
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(50px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <h1>ControlNet Doodle Studio</h1>
+      <p>Condition Stable Diffusion 1.5 on Canny edges & watch the denoising process live</p>
+    </div>
+  </header>
+
+  <div class="app-container">
+    <!-- Sidebar: Control Panel -->
+    <div class="sidebar card">
+      <div class="input-group">
+        <label for="ckptSelect">Model Checkpoint</label>
+        <select id="ckptSelect">
+          <!-- Populated dynamically via JS -->
+          <option value="">Loading checkpoints...</option>
+        </select>
+      </div>
+
+      <div class="input-group">
+        <label for="promptInput">Prompt</label>
+        <textarea id="promptInput">make a realistic image</textarea>
+      </div>
+
+      <!-- Advanced Options Accordion -->
+      <div class="advanced-section">
+        <div class="accordion-header" onclick="toggleAccordion()">
+          <h3>Advanced Settings</h3>
+          <span class="accordion-icon" id="accordionIcon">▼</span>
+        </div>
+        
+        <div class="accordion-content" id="accordionContent">
+          <div class="input-group">
+            <label for="negPromptInput">Negative Prompt</label>
+            <textarea id="negPromptInput">lowres, bad anatomy, worst quality, blurry, jpeg artifacts</textarea>
+          </div>
+
+          <div class="slider-container">
+            <div class="slider-header">
+              <label for="stepsSlider">Denoising Steps</label>
+              <span class="slider-value" id="stepsValue">30</span>
+            </div>
+            <input type="range" id="stepsSlider" min="10" max="60" value="30" oninput="updateSliderVal('steps')">
+          </div>
+
+          <div class="slider-container">
+            <div class="slider-header">
+              <label for="guidanceSlider">CFG Guidance Scale</label>
+              <span class="slider-value" id="guidanceValue">9.0</span>
+            </div>
+            <input type="range" id="guidanceSlider" min="1.0" max="20.0" step="0.5" value="9.0" oninput="updateSliderVal('guidance')">
+          </div>
+
+          <div class="slider-container">
+            <div class="slider-header">
+              <label for="controlSlider">Control Scale</label>
+              <span class="slider-value" id="controlValue">1.0</span>
+            </div>
+            <input type="range" id="controlSlider" min="0.0" max="2.0" step="0.1" value="1.0" oninput="updateSliderVal('control')">
+          </div>
+
+          <div class="input-group">
+            <label for="seedInput">Random Seed</label>
+            <div class="seed-input-container">
+              <input type="number" id="seedInput" value="0">
+              <button class="btn-icon" onclick="randomiseSeed()" title="Randomise Seed">🎲</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <button id="generateBtn" class="btn-generate" onclick="startGeneration()">Generate Image</button>
+    </div>
+
+    <!-- Right Panel: Denoising Pipeline -->
+    <div class="pipeline">
+      <!-- Stage 1: Doodle Input / Draw Canvas -->
+      <div class="pipeline-stage active" id="stageDoodle">
+        <div class="stage-title">
+          <span class="stage-number">1</span> Doodle Hint
+        </div>
+        
+        <div class="viewer-card card">
+          <div class="tabs-container">
+            <div class="tab active" id="tabUpload" onclick="setTab('upload')">Upload Sketch</div>
+            <div class="tab" id="tabDraw" onclick="setTab('draw')">Draw Canvas</div>
+          </div>
+
+          <!-- Upload Content -->
+          <div class="tab-content active" id="contentUpload">
+            <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+              <span class="placeholder-icon">📁</span>
+              <p>Drag & drop your sketch here<br><span style="font-size: 0.8rem; color: var(--text-muted);">or click to browse</span></p>
+              <input type="file" id="fileInput" accept="image/*" onchange="handleFileSelect(event)">
+            </div>
+            <img id="uploadPreview" class="frame-img" alt="Uploaded doodle">
+          </div>
+
+          <!-- Drawing Content -->
+          <div class="tab-content" id="contentDraw">
+            <canvas id="drawCanvas" width="256" height="256"></canvas>
+            <div class="canvas-controls">
+              <div class="slider-container" style="flex-grow: 1;">
+                <div class="slider-header">
+                  <label for="brushSize" style="font-size: 0.75rem;">Brush Size</label>
+                  <span class="slider-value" id="brushSizeVal" style="font-size: 0.75rem;">3</span>
+                </div>
+                <input type="range" id="brushSize" min="1" max="15" value="3" oninput="document.getElementById('brushSizeVal').textContent = this.value">
+              </div>
+              <div class="canvas-actions">
+                <button class="btn-secondary" onclick="clearCanvas()">Clear</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stage 2: Live Denoising Preview -->
+      <div class="pipeline-stage" id="stageDenoise">
+        <div class="stage-title">
+          <span class="stage-number">2</span> Denoising Process
+        </div>
+        <div class="viewer-card card">
+          <!-- Overlay to handle the slow initial loading of components -->
+          <div class="loader-overlay" id="loadingOverlay">
+            <div class="spinner"></div>
+            <div class="loader-text" id="loaderText">Starting pipeline...</div>
+          </div>
+
+          <div class="placeholder-content" id="denoisePlaceholder">
+            <span class="placeholder-icon">⏳</span>
+            <p>Live generation steps<br><span style="font-size: 0.8rem; color: var(--text-muted);">will render here</span></p>
+          </div>
+          
+          <img id="denoisePreview" class="frame-img" alt="Denoising steps">
+          
+          <div class="progress-bar-container" id="progressBar">
+            <div class="progress-bar-fill" id="progressFill"></div>
+          </div>
+          <div class="progress-text" id="progressText">Step 0/30</div>
+        </div>
+      </div>
+
+      <!-- Stage 3: Output Image -->
+      <div class="pipeline-stage" id="stageOutput">
+        <div class="stage-title">
+          <span class="stage-number">3</span> Final Masterpiece
+        </div>
+        <div class="viewer-card card">
+          <div class="placeholder-content" id="outputPlaceholder">
+            <span class="placeholder-icon">✨</span>
+            <p>Ready to generate<br><span style="font-size: 0.8rem; color: var(--text-muted);">output in PNG format</span></p>
+          </div>
+          
+          <div class="masterpiece-controls" id="outputControls">
+            <button class="btn-secondary" onclick="downloadOutput()">Download PNG</button>
+          </div>
+          
+          <img id="outputPreview" class="frame-img" alt="Final generation">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="notification" id="errorNotification">
+    <strong style="display: block; margin-bottom: 0.25rem;">Generation Error</strong>
+    <span id="errorText">An error occurred.</span>
+  </div>
+
+  <script>
+    let activeTab = 'upload';
+    let currentDoodleB64 = null;
+    let checkpoints = [];
+
+    // Canvas drawing states
+    const canvas = document.getElementById('drawCanvas');
+    const ctx = canvas.getContext('2d');
+    let drawing = false;
+
+    // Load list of checkpoints on startup
+    window.addEventListener('load', () => {
+      initCanvas();
+      fetchCheckpoints();
+    });
+
+    // Drawing Canvas init and draw logic
+    function initCanvas() {
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // Bind drawing events
+      canvas.addEventListener('mousedown', startDrawing);
+      canvas.addEventListener('mousemove', draw);
+      canvas.addEventListener('mouseup', stopDrawing);
+      canvas.addEventListener('mouseleave', stopDrawing);
+      
+      // Touch support
+      canvas.addEventListener('touchstart', startDrawing);
+      canvas.addEventListener('touchmove', draw);
+      canvas.addEventListener('touchend', stopDrawing);
+    }
+
+    function startDrawing(e) {
+      drawing = true;
+      draw(e);
+    }
+
+    function draw(e) {
+      if (!drawing) return;
+      e.preventDefault();
+      
+      const rect = canvas.getBoundingClientRect();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      const x = ((clientX - rect.left) / rect.width) * canvas.width;
+      const y = ((clientY - rect.top) / rect.height) * canvas.height;
+      
+      ctx.lineWidth = document.getElementById('brushSize').value;
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = '#000000'; // Draw black lines on white
+      
+      ctx.lineTo(x, y);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+    }
+
+    function stopDrawing() {
+      drawing = false;
+      ctx.beginPath();
+    }
+
+    function clearCanvas() {
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    // Toggle active tab (Upload vs Draw)
+    function setTab(tab) {
+      activeTab = tab;
+      document.getElementById('tabUpload').classList.toggle('active', tab === 'upload');
+      document.getElementById('tabDraw').classList.toggle('active', tab === 'draw');
+      document.getElementById('contentUpload').classList.toggle('active', tab === 'upload');
+      document.getElementById('contentDraw').classList.toggle('active', tab === 'draw');
+    }
+
+    // Handle Drag & Drop Upload
+    const uploadZone = document.getElementById('uploadZone');
+    
+    ['dragenter', 'dragover'].forEach(eventName => {
+      uploadZone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        uploadZone.classList.add('dragover');
+      }, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+      uploadZone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        uploadZone.classList.remove('dragover');
+      }, false);
+    });
+
+    uploadZone.addEventListener('drop', (e) => {
+      const dt = e.dataTransfer;
+      const files = dt.files;
+      if (files.length > 0) {
+        handleFile(files[0]);
+      }
+    });
+
+    function handleFileSelect(e) {
+      if (e.target.files.length > 0) {
+        handleFile(e.target.files[0]);
+      }
+    }
+
+    function handleFile(file) {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        currentDoodleB64 = reader.result;
+        const previewImg = document.getElementById('uploadPreview');
+        previewImg.src = reader.result;
+        previewImg.classList.add('loaded');
+        uploadZone.style.display = 'none';
+      };
+    }
+
+    // Accordion Toggle
+    function toggleAccordion() {
+      const content = document.getElementById('accordionContent');
+      const icon = document.getElementById('accordionIcon');
+      content.classList.toggle('expanded');
+      icon.textContent = content.classList.contains('expanded') ? '▲' : '▼';
+    }
+
+    // Slider Updates
+    function updateSliderVal(name) {
+      const slider = document.getElementById(name + 'Slider');
+      const display = document.getElementById(name + 'Value');
+      
+      let val = slider.value;
+      if (name === 'guidance' || name === 'control') {
+        val = parseFloat(val).toFixed(1);
+      }
+      display.textContent = val;
+    }
+
+    // Seed Randomiser
+    function randomiseSeed() {
+      document.getElementById('seedInput').value = Math.floor(Math.random() * 10000000);
+    }
+
+    // Checkpoint API fetching
+    async function fetchCheckpoints() {
+      try {
+        const response = await fetch('/api/checkpoints');
+        const data = await response.json();
+        checkpoints = data.checkpoints;
+        
+        const select = document.getElementById('ckptSelect');
+        select.innerHTML = '';
+        
+        if (checkpoints.length === 0) {
+          select.innerHTML = '<option value="">No checkpoints found (.pt)</option>';
+          return;
+        }
+
+        checkpoints.forEach(ckpt => {
+          const opt = document.createElement('option');
+          opt.value = ckpt;
+          // Prettify name (e.g. checkpoints/run1/step-006000.pt -> run1: step-006000)
+          const parts = ckpt.split(/[/\\]/);
+          const name = parts.length >= 3 ? `${parts[1]} (${parts[2].replace('.pt', '')})` : ckpt;
+          opt.textContent = name;
+          select.appendChild(opt);
+        });
+        
+        // Auto-select the last/newest checkpoint
+        select.selectedIndex = select.options.length - 1;
+      } catch (e) {
+        console.error('Failed to fetch checkpoints', e);
+        document.getElementById('ckptSelect').innerHTML = '<option value="">Failed to load checkpoints</option>';
+      }
+    }
+
+    // Start Denoising pipeline
+    async function startGeneration() {
+      const generateBtn = document.getElementById('generateBtn');
+      
+      // Determine doodle base64 image content
+      let doodleData = null;
+      if (activeTab === 'upload') {
+        doodleData = currentDoodleB64;
+      } else {
+        doodleData = canvas.toDataURL('image/png');
+      }
+
+      if (!doodleData) {
+        showError('Please upload a sketch or draw on the canvas first.');
+        return;
+      }
+
+      const ckpt = document.getElementById('ckptSelect').value;
+      if (!ckpt) {
+        showError('Please select a model checkpoint.');
+        return;
+      }
+
+      // Read form data
+      const prompt = document.getElementById('promptInput').value.trim();
+      const negativePrompt = document.getElementById('negPromptInput').value.trim();
+      const steps = document.getElementById('stepsSlider').value;
+      const guidanceScale = document.getElementById('guidanceSlider').value;
+      const controlScale = document.getElementById('controlSlider').value;
+      const seed = document.getElementById('seedInput').value;
+
+      // Lock UI
+      generateBtn.disabled = true;
+      document.getElementById('stageDoodle').classList.remove('active', 'completed');
+      document.getElementById('stageDenoise').classList.add('active');
+      document.getElementById('stageDenoise').classList.remove('completed');
+      document.getElementById('stageOutput').classList.remove('active', 'completed');
+      
+      // Reset previews and placeholder
+      document.getElementById('denoisePlaceholder').style.display = 'none';
+      document.getElementById('denoisePreview').classList.remove('loaded');
+      document.getElementById('outputPlaceholder').style.display = 'flex';
+      document.getElementById('outputPreview').classList.remove('loaded');
+      document.getElementById('outputControls').classList.remove('active');
+
+      // Show loader overlay
+      const overlay = document.getElementById('loadingOverlay');
+      const loaderText = document.getElementById('loaderText');
+      overlay.classList.add('active');
+      loaderText.textContent = "Loading Stable Diffusion components... (may take 10-15s on first generation)";
+
+      // Setup SSE stream request via POST
+      try {
+        const response = await fetch('/api/generate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            doodle: doodleData,
+            prompt,
+            negative_prompt: negativePrompt,
+            steps: parseInt(steps),
+            guidance_scale: parseFloat(guidanceScale),
+            control_scale: parseFloat(controlScale),
+            seed: parseInt(seed),
+            ckpt: ckpt
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error('API server returned an error: ' + response.statusText);
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop(); // Save trailing unfinished line back to buffer
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const dataStr = line.slice(6).trim();
+              if (!dataStr) continue;
+
+              try {
+                const payload = JSON.parse(dataStr);
+                
+                if (payload.status === 'hint') {
+                  // We received the processed hint image (white-on-black normalized edge map)
+                  // Optionally, we can replace the doodle preview with this, or just log it.
+                  console.log("Doodle normalized successfully.");
+                  // Hide loading screen once processing actually starts
+                  loaderText.textContent = "Denoising latents...";
+                } 
+                else if (payload.status === 'denoising') {
+                  // Hide initial loader once denoising begins
+                  overlay.classList.remove('active');
+                  
+                  const denoisePreview = document.getElementById('denoisePreview');
+                  denoisePreview.src = payload.image;
+                  denoisePreview.classList.add('loaded');
+                  
+                  // Update step progress
+                  const fill = document.getElementById('progressFill');
+                  const pBar = document.getElementById('progressBar');
+                  const text = document.getElementById('progressText');
+                  
+                  pBar.style.display = 'block';
+                  text.style.display = 'block';
+                  
+                  const percent = (payload.step / payload.total_steps) * 100;
+                  fill.style.width = percent + '%';
+                  text.textContent = `Step ${payload.step} / ${payload.total_steps}`;
+                } 
+                else if (payload.status === 'done') {
+                  // Complete pipeline
+                  overlay.classList.remove('active');
+                  
+                  document.getElementById('stageDenoise').classList.remove('active');
+                  document.getElementById('stageDenoise').classList.add('completed');
+                  document.getElementById('stageOutput').classList.add('active', 'completed');
+                  
+                  // Hide denoise progress bar
+                  document.getElementById('progressBar').style.display = 'none';
+                  document.getElementById('progressText').style.display = 'none';
+                  
+                  // Display final image
+                  document.getElementById('outputPlaceholder').style.display = 'none';
+                  const finalPreview = document.getElementById('outputPreview');
+                  finalPreview.src = payload.image;
+                  finalPreview.classList.add('loaded');
+                  document.getElementById('outputControls').classList.add('active');
+                } 
+                else if (payload.status === 'error') {
+                  overlay.classList.remove('active');
+                  showError(payload.message);
+                }
+              } catch (err) {
+                console.error("JSON parse error:", err, line);
+              }
+            }
+          }
+        }
+      } catch (err) {
+        overlay.classList.remove('active');
+        showError(err.message);
+      } finally {
+        generateBtn.disabled = false;
+      }
+    }
+
+    function downloadOutput() {
+      const img = document.getElementById('outputPreview');
+      if (!img.src) return;
+      
+      const link = document.createElement('a');
+      link.href = img.src;
+      link.download = `controlnet-output-${Date.now()}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    function showError(msg) {
+      const notif = document.getElementById('errorNotification');
+      document.getElementById('errorText').textContent = msg;
+      notif.style.display = 'block';
+      
+      setTimeout(() => {
+        notif.style.display = 'none';
+      }, 5000);
+    }
+  </script>
+</body>
+</html>
