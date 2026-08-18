@@ -215,6 +215,7 @@ def main() -> None:
     # ------------------------------------------------------------ train loop
     controlnet.train()
     scaling = components.vae.config.scaling_factor
+    alphas_cumprod = components.noise_scheduler.alphas_cumprod.to(device)
     running_loss, last_log = 0.0, time.time()
     progress = tqdm(total=max_steps, initial=global_step, desc="train")
 
@@ -247,7 +248,10 @@ def main() -> None:
                     target = components.noise_scheduler.get_velocity(latents, noise, timesteps)
                 else:
                     target = noise
-                loss = F.mse_loss(pred.float(), target.float()) / cfg.train.grad_accum
+                snr = alphas_cumprod[timesteps] / (1 - alphas_cumprod[timesteps])
+                weight = torch.clamp(snr, max=5.0) / snr           # gamma=5 is the usual choice
+                per_sample = F.mse_loss(pred.float(), target.float(), reduction="none").mean(dim=(1, 2, 3))
+                loss = (per_sample * weight).mean() / cfg.train.grad_accum
 
             scaler.scale(loss).backward()
             running_loss += loss.item() * cfg.train.grad_accum
