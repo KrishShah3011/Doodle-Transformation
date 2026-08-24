@@ -28,7 +28,7 @@ train:
   adam_eps: 1.0e-08
   max_grad_norm: 1.0
   lr_warmup_steps: 500
-  max_steps: 12000
+  max_steps: 60000
   max_epochs: -1
   mixed_precision: fp16
   gradient_checkpointing: true
@@ -37,9 +37,9 @@ train:
 logging:
   output_dir: checkpoints/run1
   log_every: 50
-  ckpt_every: 500
+  ckpt_every: 2000
   keep_last: 3
-  val_every: 500
+  val_every: 2000
   val_steps: 20
   val_guidance: 7.5
 sample:

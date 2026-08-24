@@ -98,6 +98,9 @@ def main() -> None:
     parser.add_argument("--guidance", type=float, default=None)
     parser.add_argument("--control-scale", type=float, default=None)
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--canny", action=argparse.BooleanOptionalAction, default=True, help="Apply Canny edge detection to input image (default: True)")
+    parser.add_argument("--canny-low", type=int, default=100, help="Canny edge low threshold")
+    parser.add_argument("--canny-high", type=int, default=200, help="Canny edge high threshold")
     parser.add_argument("opts", nargs="*", help="config overrides, e.g. data.resolution=512")
     args = parser.parse_args()
 
@@ -107,7 +110,13 @@ def main() -> None:
 
     components, controlled = build_model(cfg, args.ckpt, device, dtype)
 
-    hint = load_doodle(args.doodle, cfg.data.resolution)
+    hint = load_doodle(
+        args.doodle,
+        cfg.data.resolution,
+        apply_canny=args.canny,
+        canny_low=args.canny_low,
+        canny_high=args.canny_high,
+    )
     hints = hint.unsqueeze(0).repeat(args.num, 1, 1, 1)
 
     images = generate(

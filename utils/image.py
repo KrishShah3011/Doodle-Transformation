@@ -37,19 +37,30 @@ def canny_edges(img_rgb: np.ndarray, low: int, high: int) -> np.ndarray:
     return np.stack([edges] * 3, axis=-1)
 
 
-def load_doodle(path: str, resolution: int) -> torch.Tensor:
-    """Loads a user doodle, auto-inverts dark-on-white sketches, and returns a [0,1] CHW tensor."""
+def load_doodle(
+    path: str,
+    resolution: int,
+    apply_canny: bool = False,
+    canny_low: int = 100,
+    canny_high: int = 200,
+) -> torch.Tensor:
+    """Loads a user doodle or photo, optionally applies Canny, and returns a [0,1] CHW tensor."""
     img = Image.open(path).convert("RGB")
-    img = center_crop_square(img).resize((resolution, resolution), Image.NEAREST)
+    resample_mode = Image.BICUBIC if apply_canny else Image.NEAREST
+    img = center_crop_square(img).resize((resolution, resolution), resample_mode)
     arr = np.asarray(img, dtype=np.uint8)
 
-    # Training hints are white lines on black. A scanned/drawn sketch is usually the
-    # opposite, so invert when the image is predominantly bright.
-    if arr.mean() > 127:
-        arr = 255 - arr
+    if apply_canny:
+        arr = canny_edges(arr, canny_low, canny_high)
+    else:
+        # Training hints are white lines on black. A scanned/drawn sketch is usually the
+        # opposite, so invert when the image is predominantly bright.
+        if arr.mean() > 127:
+            arr = 255 - arr
 
     tensor = torch.from_numpy(arr.astype(np.float32) / 255.0).permute(2, 0, 1)
     return tensor
+
 
 
 def make_grid(images: list[Image.Image], cols: int = 4) -> Image.Image:
